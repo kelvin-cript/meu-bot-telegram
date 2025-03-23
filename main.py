@@ -8,7 +8,7 @@ from threading import Thread
 import requests
 import os
 
-# Configuração do Flask para manter o bot ativo
+# Flask para manter o Render ativo
 flask_app = Flask(__name__)
 
 @flask_app.route('/')
@@ -16,7 +16,7 @@ def home():
     return "Bot está rodando!", 200
 
 def keep_alive():
-    """Realiza ping para evitar que o Render desligue o serviço."""
+    """Evita que o Render desligue o serviço."""
     url = os.getenv("RENDER_EXTERNAL_URL")
     if url:
         while True:
@@ -37,8 +37,8 @@ def extract_marketplace_name(url: str) -> str:
 
 def get_promo_header() -> str:
     promo_headers = [
-        "🚨 SUPER PROMOÇÃOOOOOO 🚨", "🔥 OFERTA IMPERDÍVEL! 🔥", "🎉 DESCONTO INCRÍVEL! 🎉",
-        "⚡ OFERTA RELÂMPAGO! ⚡", "💥 SUPER DESCONTOOOO! 💥", "🛍️ OFERTA ESPECIAL! 🛍️"
+        "🚨 SUPER PROMOÇÃO! 🚨", "🔥 OFERTA IMPERDÍVEL! 🔥",
+        "🎉 DESCONTO INCRÍVEL! 🎉", "⚡ OFERTA RELÂMPAGO! ⚡"
     ]
     return random.choice(promo_headers)
 
@@ -59,11 +59,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     elif "title" not in user_data:
         user_data["title"] = text
-        await update.message.reply_text("💲 Qual é o preço original? (Ex: 719,00)")
+        await update.message.reply_text("💲 Qual o preço original? (Ex: 719,00)")
     
     elif "original_price" not in user_data:
         user_data["original_price"] = text
-        await update.message.reply_text("💸 Qual é o preço atual? (Ex: 550,00)")
+        await update.message.reply_text("💸 Qual o preço atual? (Ex: 550,00)")
     
     elif "current_price" not in user_data:
         user_data["current_price"] = text
@@ -109,7 +109,7 @@ async def run_bot():
     token = os.getenv("TELEGRAM_TOKEN")
     
     if not token:
-        print("❌ Token do Telegram não encontrado!")
+        print("❌ Token não encontrado!")
         return
     
     bot = ApplicationBuilder().token(token).build()
@@ -118,9 +118,8 @@ async def run_bot():
     bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     bot.add_handler(CallbackQueryHandler(handle_promo_choice))
     
-    print("🤖 Bot iniciado com sucesso!")
+    print("🤖 Bot iniciado!")
     
-    # Usa o loop já existente
     await bot.run_polling(close_loop=False)
 
 def start_flask():
@@ -131,5 +130,4 @@ if __name__ == "__main__":
     Thread(target=start_flask).start()
     Thread(target=keep_alive).start()
     
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run_bot())
+    asyncio.create_task(run_bot())  # Usa create_task para não interferir no loop existente
