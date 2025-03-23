@@ -15,18 +15,13 @@ flask_app = Flask(__name__)
 def home():
     return "Bot está rodando!", 200
 
-def keep_alive():
-    """Evita que o Render desligue o serviço."""
-    url = os.getenv("RENDER_EXTERNAL_URL")
-    if url:
-        while True:
-            try:
-                requests.get(url, timeout=10)
-            except Exception as e:
-                print(f"Erro ao pingar: {e}")
-            asyncio.run(asyncio.sleep(600))  # Pinga a cada 10 minutos
+def start_flask():
+    """Inicia o Flask."""
+    port = int(os.environ.get("PORT", 10000))
+    flask_app.run(host="0.0.0.0", port=port)
 
 def extract_marketplace_name(url: str) -> str:
+    """Extrai o nome do marketplace do link."""
     parsed_url = urlparse(url)
     domain = parsed_url.netloc
     parts = domain.split('.')
@@ -36,14 +31,17 @@ def extract_marketplace_name(url: str) -> str:
     return "Marketplace"
 
 def get_promo_header() -> str:
+    """Retorna uma mensagem de promoção aleatória."""
     promo_headers = [
-        "🚨 SUPER PROMOÇÃO! 🚨", "🔥 OFERTA IMPERDÍVEL! 🔥",
-        "🎉 DESCONTO INCRÍVEL! 🎉", "⚡ OFERTA RELÂMPAGO! ⚡"
+        "🚨 SUPER PROMOÇÃO! 🚨",
+        "🔥 OFERTA IMPERDÍVEL! 🔥",
+        "🎉 DESCONTO INCRÍVEL! 🎉",
+        "⚡ OFERTA RELÂMPAGO! ⚡"
     ]
     return random.choice(promo_headers)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("🚀 Bem-vindo! Envie o link do produto para começarmos.")
+    await update.message.reply_text("🚀 Bem-vindo! Envie o link do produto para começar.")
     context.user_data.clear()
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -88,7 +86,7 @@ async def handle_promo_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"🛍️ *{user_data['title']}*\n"
             f"❌ De: ~R$ {user_data['original_price']}~\n"
             f"🔥 Por: *R$ {user_data['current_price']}* 🥳\n"
-            f"🛒 Promoção {marketplace}! 🛒\n"
+            f"🛒 Promoção {marketplace}!\n"
             f"Compre aqui 👉 {user_data['link']}\n\n"
             "_⏳ Válida por tempo limitado!_"
         )
@@ -98,8 +96,8 @@ async def handle_promo_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"🚨 BUG INCRÍVEL 🚨\n"
             f"*{user_data['title']}*\n"
             f"🔥 Apenas R$ {user_data['current_price']}!\n"
-            f"🔥 Aproveite agora 👉 {user_data['link']}\n\n"
-            "_⏳ Promoção por tempo limitado!_"
+            f"🛒 Aproveite 👉 {user_data['link']}\n\n"
+            "_⏳ Oferta limitada!_"
         )
     
     await query.edit_message_text(promo_text, parse_mode="Markdown")
@@ -111,7 +109,7 @@ async def run_bot():
     if not token:
         print("❌ Token não encontrado!")
         return
-    
+
     bot = ApplicationBuilder().token(token).build()
     
     bot.add_handler(CommandHandler("start", start))
@@ -122,12 +120,14 @@ async def run_bot():
     
     await bot.run_polling(close_loop=False)
 
-def start_flask():
-    port = int(os.environ.get("PORT", 10000))
-    flask_app.run(host="0.0.0.0", port=port)
+def main():
+    Thread(target=start_flask).start()  # Flask em thread separado
+
+    # Cria loop assíncrono corretamente
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    loop.run_until_complete(run_bot())
 
 if __name__ == "__main__":
-    Thread(target=start_flask).start()
-    Thread(target=keep_alive).start()
-    
-    asyncio.create_task(run_bot())  # Usa create_task para não interferir no loop existente
+    main()
