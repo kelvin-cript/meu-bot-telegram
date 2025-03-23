@@ -5,13 +5,26 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, CallbackQueryHandler, filters
 from flask import Flask
 from threading import Thread
+import requests
+import os
 
 # Configuração do Flask para manter o bot ativo no Render
-app = Flask(__name__)
+flask_app = Flask(__name__)
 
-@app.route('/')
+@flask_app.route('/')
 def home():
     return "Bot está rodando!", 200
+
+def keep_alive():
+    """Evita que o Render desligue o serviço, fazendo pings periódicos."""
+    url = os.getenv("RENDER_EXTERNAL_URL")
+    if url:
+        while True:
+            try:
+                requests.get(url, timeout=10)
+            except Exception as e:
+                print(f"Erro ao pingar: {e}")
+            asyncio.sleep(600)  # Pinga a cada 10 minutos
 
 def extract_marketplace_name(url: str) -> str:
     parsed_url = urlparse(url)
@@ -87,7 +100,7 @@ async def handle_promo_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
     user_data.clear()
 
 async def run_bot():
-    TELEGRAM_TOKEN = "8157218418:AAH6e-anxi5BPvE2pSbJV1QkZk-LqZkeQhY"  # Insira seu token aqui
+    TELEGRAM_TOKEN = "SEU_TOKEN_AQUI"  # Substitua pelo seu token correto
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
@@ -95,22 +108,12 @@ async def run_bot():
     app.add_handler(CallbackQueryHandler(handle_promo_choice))
     
     print("🤖 Bot iniciado com sucesso!")
-    await app.initialize()
-    await app.start()
-    try:
-        await app.updater.start_polling()
-        await asyncio.Future()
-    except (asyncio.CancelledError, KeyboardInterrupt):
-        pass
-    finally:
-        await app.updater.stop()
-        await app.stop()
-        await app.shutdown()
-        print("🤖 Bot encerrado.")
+    await app.run_polling()
 
 def start_flask():
-    app.run(host="0.0.0.0", port=10000)
+    flask_app.run(host="0.0.0.0", port=10000)
 
 if __name__ == "__main__":
     Thread(target=start_flask).start()
+    Thread(target=keep_alive).start()  # Mantém o serviço ativo no Render
     asyncio.run(run_bot())
