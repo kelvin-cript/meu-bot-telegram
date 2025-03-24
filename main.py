@@ -17,7 +17,7 @@ app = FastAPI()
 # Token do Telegram (não compartilhe publicamente)
 TOKEN = "8157218418:AAH6e-anxi5BPvE2pSbJV1QkZk-LqZkeQhY"
 
-# Cria aplicação Telegram
+# Cria a aplicação Telegram
 application = Application.builder().token(TOKEN).build()
 
 # Comando /start
@@ -58,7 +58,7 @@ def criar_anuncio(link: str, marketplace: str, descricao: str) -> str:
         "⏳ Promoção válida por tempo limitado!"
     )
 
-# Handlers
+# Adiciona handlers
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
@@ -68,11 +68,26 @@ async def root():
 
 @app.post("/webhook")
 async def webhook(request: Request):
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception as e:
+        logging.error(f"Erro ao decodificar JSON: {e}")
+        return {"ok": False, "error": "Invalid JSON"}
+
     update = Update.de_json(data, application.bot)
-    await application.process_update(update)
+
+    # Inicializa a aplicação corretamente
+    if not application.is_initialized():
+        await application.initialize()  # Corrige erro de inicialização
+
+    try:
+        await application.process_update(update)
+    except Exception as e:
+        logging.error(f"Erro ao processar update: {e}")
+        return {"ok": False, "error": "Erro interno"}
+
     return {"ok": True}
 
-# Rodar o servidor
+# Roda o servidor
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=10000)
