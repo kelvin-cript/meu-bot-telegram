@@ -49,7 +49,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     else:
         await update.message.reply_text("Por favor, envie um link válido.")
 
-# Função para criar o anúncio
+# Cria o anúncio formatado
 def criar_anuncio(link: str, marketplace: str, descricao: str) -> str:
     return (
         f"🚨 *SUPER PROMOÇÃO!* 🚨\n"
@@ -67,21 +67,32 @@ application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle
 async def root():
     return {"status": "Bot rodando no Render!"}
 
-# Webhook com tratamento de erro aprimorado
+# Webhook com inicialização correta
 @app.post("/webhook")
 async def webhook(request: Request):
     try:
+        # Inicializa o Application corretamente
+        await application.initialize()
+        
         data = await request.json()
         update = Update.de_json(data, application.bot)
+        
+        # Processa a atualização
         await application.process_update(update)
+        
+        # Finaliza corretamente após processar
+        await application.shutdown()
+        
         return {"ok": True}
-    except ValueError as e:  # Captura erro de JSON inválido
+    
+    except ValueError as e:  # Erro JSON inválido
         logging.error(f"Erro JSON inválido: {e}")
         return {"ok": False, "error": "JSON inválido"}
+    
     except Exception as e:
         logging.error(f"Erro ao processar webhook: {e}")
         return {"ok": False, "error": str(e)}
 
-# Inicia o servidor FastAPI com Uvicorn
+# Inicia FastAPI com Uvicorn
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=10000)
