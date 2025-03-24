@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI()
 
 # Inicializa o Application do python-telegram-bot
-application = Application.builder().token("SEU_TOKEN_AQUI").build()
+application = Application.builder().token("8157218418:AAH6e-anxi5BPvE2pSbJV1QkZk-LqZkeQhY").build()
 
 # Handler para o comando /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
