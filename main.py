@@ -5,7 +5,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, ContextTyp
 from fastapi import FastAPI, Request
 import uvicorn
 
-# Evita problemas com loop de eventos
+# Aplicação assíncrona Nest AsyncIO
 nest_asyncio.apply()
 
 # Configuração de logs
@@ -14,32 +14,32 @@ logging.basicConfig(level=logging.INFO)
 # Inicializa FastAPI
 app = FastAPI()
 
-# Token do Telegram (NÃO compartilhe publicamente)
+# Token do bot (mantenha-o seguro)
 TOKEN = "8157218418:AAH6e-anxi5BPvE2pSbJV1QkZk-LqZkeQhY"
 
 # Cria aplicação Telegram
 application = Application.builder().token(TOKEN).build()
 
-# Comando /start
+# Handler para o comando /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("Olá! Envie o link da Shopee ou Mercado Livre para criar o anúncio.")
 
-# Manipula mensagens recebidas
+# Handler para mensagens
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     link = update.message.text.strip()
     
     if "shopee" in link.lower():
-        context.user_data["link"] = link  
+        context.user_data["link"] = link
         context.user_data["marketplace"] = "Shopee"
         await update.message.reply_text("Por favor, insira a descrição do produto.")
     
     elif "mercadolivre" in link.lower() or "ml." in link.lower():
-        context.user_data["link"] = link  
+        context.user_data["link"] = link
         context.user_data["marketplace"] = "Mercado Livre"
         await update.message.reply_text("Por favor, insira a descrição do produto.")
     
     elif "link" in context.user_data:
-        descricao = update.message.text.strip()  
+        descricao = update.message.text.strip()
         link = context.user_data["link"]
         marketplace = context.user_data["marketplace"]
         anuncio = criar_anuncio(link, marketplace, descricao)
@@ -49,37 +49,39 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     else:
         await update.message.reply_text("Por favor, envie um link válido.")
 
-# Cria o anúncio
+# Função para criar o anúncio
 def criar_anuncio(link: str, marketplace: str, descricao: str) -> str:
     return (
         f"🚨 *SUPER PROMOÇÃO!* 🚨\n"
         f"{descricao}\n\n"
-        f"🛒 Compre aqui: {link}\n"
-        "⏳ Promoção válida por tempo limitado!"
+        f"🛒 [Compre aqui]({link})\n"
+        "⏳ Promoção por tempo limitado!"
     )
 
-# Adiciona handlers
+# Registra handlers
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-# Rota raiz
+# Rota root
 @app.get("/")
 async def root():
     return {"status": "Bot rodando no Render!"}
 
-# Webhook endpoint
+# Webhook com tratamento de erro aprimorado
 @app.post("/webhook")
 async def webhook(request: Request):
     try:
         data = await request.json()
         update = Update.de_json(data, application.bot)
-        await application.initialize()  # Inicializa corretamente a aplicação
         await application.process_update(update)
         return {"ok": True}
+    except ValueError as e:  # Captura erro de JSON inválido
+        logging.error(f"Erro JSON inválido: {e}")
+        return {"ok": False, "error": "JSON inválido"}
     except Exception as e:
-        logging.error(f"Erro no webhook: {e}")
+        logging.error(f"Erro ao processar webhook: {e}")
         return {"ok": False, "error": str(e)}
 
-# Rodar o servidor
+# Inicia o servidor FastAPI com Uvicorn
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=10000)
